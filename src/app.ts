@@ -1,9 +1,11 @@
-import express, { Application, Request, Response } from 'express';
 import dotenv from 'dotenv';
+dotenv.config();
+
+import express, { Application, Request, Response } from 'express';
 import routes from './routes';
 import { errorHandler } from './middlewares';
 
-dotenv.config();
+
 
 const app: Application = express();
 

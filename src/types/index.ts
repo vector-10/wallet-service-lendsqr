@@ -3,6 +3,7 @@ export interface User {
   first_name: string;
   last_name: string;
   email: string;
+  bvn: string;
   phone: string;
   password_hash: string;
   status?: 'active' | 'blacklisted' | 'suspended';
