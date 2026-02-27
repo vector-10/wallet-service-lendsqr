@@ -2,11 +2,11 @@ import db from "../config/database";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils";
 import adjutorService from "./adjutor.service";
-import { User, Wallet } from "../types";
+import { User, UserRecord, Wallet } from "../types";
 
 class UserService {
-  private async findUserByEmail(email: string) {
-    return db<User>("users").where({ email }).first();
+  private async findUserByEmail(email: string): Promise<UserRecord | undefined> {
+    return db<UserRecord>("users").where({ email }).first();
   }
 
   private sanitizeUser(user: User) {
@@ -20,7 +20,7 @@ class UserService {
     email: string;
     phone: string;
     password: string;
-  }): Promise<{ user: Partial<User>; token: string }> {
+  }): Promise<{ user: Partial<UserRecord>; token: string }> {
     const existing = await this.findUserByEmail(data.email);
     if (existing) throw new Error("Email already in use");
 
@@ -47,7 +47,7 @@ class UserService {
         currency: "NGN",
       });
 
-      return trx<User>("users")
+      return trx<UserRecord>("users")
         .where({ id: userId })
         .select(
           "id",
@@ -60,6 +60,8 @@ class UserService {
         )
         .first();
     });
+    if (!user) throw new Error("Failed to create account");
+
     const token = generateToken({ id: user.id, email: user.email });
     return { user, token };
   }
@@ -67,7 +69,7 @@ class UserService {
   async login(data: {
     email: string;
     password: string;
-  }): Promise<{ user: Partial<User>; token: string }> {
+  }): Promise<{ user: Partial<UserRecord>; token: string }> {
     const user = await this.findUserByEmail(data.email);
     if (!user) throw new Error("Invalid Credentials");
 

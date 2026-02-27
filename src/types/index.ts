@@ -11,10 +11,14 @@ export interface User {
   updated_at?: Date;
 }
 
+export interface UserRecord extends User {
+  id: number;
+}
+
 export interface Wallet {
   id?: number;
   user_id: number;
-  balance?: number;
+  balance: number;
   currency?: string;
   created_at?: Date;
   updated_at?: Date;
@@ -41,4 +45,12 @@ export interface ApiResponse<T> {
   status: boolean;
   message: string;
   data?: T;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthPayload;
+    }
+  }
 }

@@ -1,5 +1,6 @@
 import { Wallet, Transaction, User } from "../types";
 import { generateReference } from "../utils";
+import db from "../config/database";
 
 class WalletService {
   private async findWalletByUserId(userId: number): Promise<Wallet> {
@@ -15,8 +16,8 @@ class WalletService {
   private async recordTransaction(
     trx: any,
     data: {
-      source_wallet_id: number | null;
-      destination_wallet_id: number | null;
+      source_wallet_id: number | null | undefined;
+    destination_wallet_id: number | null | undefined;
       type: "fund" | "transfer" | "withdraw";
       amount: number;
       narration: string;
