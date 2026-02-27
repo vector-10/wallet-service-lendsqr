@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      axios:
+        specifier: ^1.13.5
+        version: 1.13.5
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -17,6 +20,9 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
+      express-validator:
+        specifier: ^7.3.1
+        version: 7.3.1
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
@@ -45,15 +51,9 @@ importers:
       '@types/supertest':
         specifier: ^7.2.0
         version: 7.2.0
-      axios:
-        specifier: ^1.13.5
-        version: 1.13.5
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
-      express-validator:
-        specifier: ^7.3.1
-        version: 7.3.1
       jest:
         specifier: ^30.2.0
         version: 30.2.0(@types/node@25.3.1)(ts-node@10.9.2(@types/node@25.3.1)(typescript@5.9.3))
