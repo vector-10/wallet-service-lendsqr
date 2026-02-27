@@ -12,7 +12,7 @@ class UserService {
   }
 
   private sanitizeUser(user: User) {
-    const { password_hash, ...safeUser } = user as any;
+    const { password_hash, bvn, karma_checked_at, updated_at, ...safeUser } = user as any;
     return safeUser;
   }
 
