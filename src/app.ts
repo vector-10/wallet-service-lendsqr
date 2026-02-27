@@ -7,11 +7,11 @@ dotenv.config();
 
 const app: Application = express();
 
-// Middlewares
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
+
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: true,
@@ -20,10 +20,10 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// Routes
+
 app.use('/api/v1', routes);
 
-// 404 handler
+
 app.use((req: Request, res: Response) => {
   res.status(404).json({
     status: false,
@@ -31,7 +31,7 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Error handler
+
 app.use(errorHandler);
 
 export default app;
