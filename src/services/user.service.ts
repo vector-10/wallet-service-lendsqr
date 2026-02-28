@@ -11,8 +11,8 @@ class UserService {
     return db<UserRecord>("users").where({ email }).first();
   }
 
-  private sanitizeUser(user: User) {
-    const { password_hash, bvn, karma_checked_at, updated_at, ...safeUser } = user as any;
+  private sanitizeUser(user: UserRecord): Omit<UserRecord, 'password_hash' | 'bvn' | 'karma_checked_at' | 'updated_at'> {
+    const { password_hash, bvn, karma_checked_at, updated_at, ...safeUser } = user;
     return safeUser;
   }
 
@@ -51,15 +51,12 @@ class UserService {
       currency: 'NGN',
     });
 
-    const user = await trx<UserRecord>('users')
-      .where({ id: userId })
-      .select('id', 'first_name', 'last_name', 'email', 'phone', 'status', 'created_at')
-      .first();
+    const user = await trx<UserRecord>('users').where({ id: userId }).first();
 
     if (!user) throw new Error('Failed to create account');
 
     const token = generateToken({ id: user.id, email: user.email });
-    return { user, token };
+    return { user: this.sanitizeUser(user), token };
   });
 
   return result;

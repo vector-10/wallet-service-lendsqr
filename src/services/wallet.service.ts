@@ -1,4 +1,4 @@
-import { Wallet, Transaction, User } from "../types";
+import { Wallet, Transaction, User, FundWalletResult, TransferResult, WithdrawResult } from "../types";
 import { generateReference } from "../utils";
 import db from "../config/database";
 
@@ -28,7 +28,7 @@ class WalletService {
     return reference;
   }
 
-  async fundWallet(userId: number, amount: number): Promise<object> {
+  async fundWallet(userId: number, amount: number): Promise<FundWalletResult> {
     this.validateAmount(amount);
     const wallet = await this.findWalletByUserId(userId);
 
@@ -56,7 +56,7 @@ class WalletService {
     senderId: number,
     receiverEmail: string,
     amount: number,
-  ): Promise<object> {
+  ): Promise<TransferResult> {
     this.validateAmount(amount);
 
     const receiver = await db<User>("users")
@@ -99,7 +99,7 @@ class WalletService {
     });
   }
 
-  async withdrawFunds(userId: number, amount: number): Promise<object> {
+  async withdrawFunds(userId: number, amount: number): Promise<WithdrawResult> {
     this.validateAmount(amount);
 
     return db.transaction(async (trx) => {
@@ -130,7 +130,7 @@ class WalletService {
     });
   }
 
-  async getWalletBalance(userId: number): Promise<object> {
+  async getWalletBalance(userId: number): Promise<Wallet> {
     return this.findWalletByUserId(userId);
   }
 

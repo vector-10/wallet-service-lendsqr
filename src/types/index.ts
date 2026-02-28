@@ -42,6 +42,22 @@ export interface AuthPayload {
   email: string;
 }
 
+export interface FundWalletResult {
+  wallet: Wallet;
+  reference: string;
+}
+
+export interface TransferResult {
+  reference: string;
+  amount: number;
+  receiver: string;
+}
+
+export interface WithdrawResult {
+  wallet: Wallet;
+  reference: string;
+}
+
 export interface ApiResponse<T> {
   status: boolean;
   message: string;
