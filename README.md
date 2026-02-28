@@ -66,8 +66,12 @@ The balance check also happens inside the locked transaction — not before it. 
 ### Karma check returns 404 for clean users
 The Adjutor API returns `404` when a BVN is not on the blacklist (not found = not blacklisted). Any other error (network failure, 5xx) is treated as a service outage and returns `503` to the caller rather than silently allowing registration.
 
+### Minimum balance enforcement
+Every wallet has a `minimum_balance` of NGN 100 that cannot be spent. Withdrawals and transfers are rejected if the transaction would leave the sender's balance below this floor.
+
+
 ### Why Express over NestJS
-A framework like express allows me to uniopinionated control over the file structure and architecture, this enables me to demonstrate my skill in following best practices and clean code practices.
+Express was chosen for its minimal abstraction layer and full control over middleware, routing, and transaction boundaries. For a relatively small, single-service application, this keeps the architecture explicit and avoids unnecessary framework overhead.
 
 ### Security considerations
 The assessment spec noted that a faux token-based authentication would suffice. A single JWT is issued on login and verified on every protected request. There are no refresh tokens or token rotation — that would be the next step toward a production-grade auth system.

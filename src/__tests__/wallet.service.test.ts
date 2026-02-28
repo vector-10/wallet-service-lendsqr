@@ -9,6 +9,7 @@ const mockWallet = {
   id: 1,
   user_id: 1,
   balance: 5000,
+  minimum_balance: 100,
   currency: "NGN",
   created_at: new Date(),
   updated_at: new Date(),
@@ -31,6 +32,7 @@ const mockReceiverWallet = {
   id: 2,
   user_id: 2,
   balance: 1000,
+  minimum_balance: 100,
   currency: "NGN",
   created_at: new Date(),
   updated_at: new Date(),
@@ -166,8 +168,8 @@ describe("WalletService", () => {
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
           first: jest.fn()
-            .mockResolvedValueOnce({ ...mockWallet, balance: 100 }) 
-            .mockResolvedValueOnce(mockReceiverWallet),              
+            .mockResolvedValueOnce({ ...mockWallet, balance: 100 })
+            .mockResolvedValueOnce(mockReceiverWallet),
         });
         return cb(trx);
       });
@@ -175,6 +177,29 @@ describe("WalletService", () => {
       await expect(
         walletService.transferFunds(1, "receiver@gmail.com", 5000),
       ).rejects.toThrow("Insufficient funds");
+    });
+
+    it("should throw error if transfer would breach minimum balance", async () => {
+      (mockedDb as any).mockReturnValueOnce({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue(mockReceiver),
+      });
+
+      (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
+        const trx: any = jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnThis(),
+          forUpdate: jest.fn().mockReturnThis(),
+          // balance is 150, transfer of 100 would leave 50 — below minimum of 100
+          first: jest.fn()
+            .mockResolvedValueOnce({ ...mockWallet, balance: 150, minimum_balance: 100 })
+            .mockResolvedValueOnce(mockReceiverWallet),
+        });
+        return cb(trx);
+      });
+
+      await expect(
+        walletService.transferFunds(1, "receiver@gmail.com", 100),
+      ).rejects.toThrow("Insufficient funds. A minimum balance of NGN 100 must be maintained.");
     });
 
     it("should throw error if sender wallet not found inside transaction", async () => {
@@ -318,6 +343,22 @@ describe("WalletService", () => {
 
       await expect(walletService.withdrawFunds(1, 5000)).rejects.toThrow(
         "Insufficient funds",
+      );
+    });
+
+    it("should throw error if withdrawal would breach minimum balance", async () => {
+      (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
+        const trx: any = jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnThis(),
+          forUpdate: jest.fn().mockReturnThis(),
+          // balance is 150, withdrawal of 100 would leave 50 — below minimum of 100
+          first: jest.fn().mockResolvedValue({ ...mockWallet, balance: 150, minimum_balance: 100 }),
+        });
+        return cb(trx);
+      });
+
+      await expect(walletService.withdrawFunds(1, 100)).rejects.toThrow(
+        "Insufficient funds. A minimum balance of NGN 100 must be maintained.",
       );
     });
   });

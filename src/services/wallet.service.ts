@@ -85,7 +85,10 @@ class WalletService {
 
       if (!senderWallet) throw new NotFoundError("Sender wallet not found");
       if (!receiverWallet) throw new NotFoundError("Receiver wallet not found");
-      if (senderWallet.balance < amount) throw new UnprocessableError("Insufficient funds");
+      const senderMinimum = senderWallet.minimum_balance ?? 100;
+      if (senderWallet.balance - amount < senderMinimum) {
+        throw new UnprocessableError(`Insufficient funds. A minimum balance of NGN ${senderMinimum} must be maintained.`);
+      }
 
       await trx("wallets")
         .where({ id: senderWallet.id })
@@ -116,7 +119,10 @@ class WalletService {
         .first();
 
       if (!wallet) throw new NotFoundError("Wallet not found");
-      if (wallet.balance < amount) throw new UnprocessableError("Insufficient funds");
+      const minimum = wallet.minimum_balance ?? 100;
+      if (wallet.balance - amount < minimum) {
+        throw new UnprocessableError(`Insufficient funds. A minimum balance of NGN ${minimum} must be maintained.`);
+      }
 
       await trx("wallets")
         .where({ id: wallet.id })

@@ -40,6 +40,7 @@ export interface Wallet {
   id?: number;
   user_id: number;
   balance: number;
+  minimum_balance?: number;
   currency?: string;
   created_at?: Date;
   updated_at?: Date;
