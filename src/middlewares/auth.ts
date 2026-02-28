@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils';
-import { sendError } from '../utils';
+import { verifyToken, sendError } from '../utils';
+
 
 export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
   try {

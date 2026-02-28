@@ -70,7 +70,7 @@ class UserService {
     password: string;
   }): Promise<{ user: Partial<UserRecord>; token: string }> {
     const user = await this.findUserByEmail(data.email);
-    if (!user) throw new Error("Invalid Credentials");
+    if (!user) throw new Error("Invalid credentials");
 
     if (user.status === "blacklisted")
       throw new Error("Account is blacklisted");

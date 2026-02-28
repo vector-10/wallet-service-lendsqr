@@ -17,7 +17,7 @@ class WalletService {
     trx: any,
     data: {
       source_wallet_id: number | null | undefined;
-    destination_wallet_id: number | null | undefined;
+      destination_wallet_id: number | null | undefined;
       type: "fund" | "transfer" | "withdraw";
       amount: number;
       narration: string;
@@ -58,11 +58,10 @@ class WalletService {
     amount: number,
   ): Promise<object> {
     this.validateAmount(amount);
-    const senderWallet = await this.findWalletByUserId(senderId);
 
-    if (senderWallet.balance < amount) throw new Error("Insufficient funds");
-
-    const receiver = await db<User>("users").where({ email: receiverEmail }).first();
+    const receiver = await db<User>("users")
+      .where({ email: receiverEmail })
+      .first();
     if (!receiver) throw new Error("Receiver not found");
     if (receiver.id === senderId)
       throw new Error("Cannot transfer to yourself");
@@ -73,6 +72,14 @@ class WalletService {
     if (!receiverWallet) throw new Error("Receiver wallet not found");
 
     return db.transaction(async (trx) => {
+      const senderWallet = await trx("wallets")
+        .where({ user_id: senderId })
+        .forUpdate()
+        .first();
+
+      if (!senderWallet) throw new Error("Wallet not found");
+      if (senderWallet.balance < amount) throw new Error("Insufficient funds");
+
       await trx("wallets")
         .where({ id: senderWallet.id })
         .decrement("balance", amount);
@@ -94,11 +101,16 @@ class WalletService {
 
   async withdrawFunds(userId: number, amount: number): Promise<object> {
     this.validateAmount(amount);
-    const wallet = await this.findWalletByUserId(userId);
-
-    if (wallet.balance < amount) throw new Error("Insufficient funds");
 
     return db.transaction(async (trx) => {
+      const wallet = await trx("wallets")
+        .where({ user_id: userId })
+        .forUpdate()
+        .first();
+
+      if (!wallet) throw new Error("Wallet not found");
+      if (wallet.balance < amount) throw new Error("Insufficient funds");
+
       await trx("wallets")
         .where({ id: wallet.id })
         .decrement("balance", amount);
