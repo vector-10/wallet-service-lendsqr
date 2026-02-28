@@ -12,7 +12,6 @@ class AdjutorService {
   }
 
   async checkKarmaBlacklist(bvn: string): Promise<boolean> {
-
     try {
       const response = await axios.get(
         `${this.baseUrl}/verification/karma/${bvn}`,
@@ -20,8 +19,8 @@ class AdjutorService {
       );
       if (response.data?.["mock-response"]) return false;
       return response.data?.data !== null && response.data?.data !== undefined;
-    } catch (error: any) {
-      if (error.response?.status === 404) return false;
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) return false;
       throw new AppError(
         "Identity verification failed. Please try again later or contact support.",
         503,

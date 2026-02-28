@@ -14,6 +14,26 @@ export interface User {
 
 export interface UserRecord extends User {
   id: number;
+  status: 'active' | 'blacklisted' | 'suspended';
+  karma_checked_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export type SafeUser = Omit<UserRecord, 'password_hash' | 'bvn' | 'karma_checked_at' | 'updated_at'>;
+
+export interface RegisterInput {
+  first_name: string;
+  last_name: string;
+  email: string;
+  bvn: string;
+  phone: string;
+  password: string;
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
 }
 
 export interface Wallet {

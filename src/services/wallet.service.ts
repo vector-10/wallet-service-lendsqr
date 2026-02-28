@@ -1,5 +1,5 @@
 import { Knex } from "knex";
-import { Wallet, Transaction, User, FundWalletResult, TransferResult, WithdrawResult } from "../types";
+import { Wallet, Transaction, UserRecord, FundWalletResult, TransferResult, WithdrawResult } from "../types";
 import { generateReference } from "../utils";
 import { NotFoundError, UnprocessableError, ValidationError } from "../utils/errors";
 import db from "../config/database";
@@ -61,24 +61,30 @@ class WalletService {
   ): Promise<TransferResult> {
     this.validateAmount(amount);
 
-    const receiver = await db<User>("users")
+    const receiver = await db<UserRecord>("users")
       .where({ email: receiverEmail })
       .first();
     if (!receiver) throw new NotFoundError("Receiver not found");
     if (receiver.id === senderId) throw new UnprocessableError("Cannot transfer to yourself");
 
-    const receiverWallet = await db<Wallet>("wallets")
-      .where({ user_id: receiver.id })
-      .first();
-    if (!receiverWallet) throw new NotFoundError("Receiver wallet not found");
-
     return db.transaction(async (trx) => {
-      const senderWallet = await trx("wallets")
-        .where({ user_id: senderId })
+      // Always lock in ascending user_id order to prevent circular deadlocks
+      const [firstUserId, secondUserId] = [senderId, receiver.id].sort((a, b) => a - b);
+
+      const firstWallet = await trx("wallets")
+        .where({ user_id: firstUserId })
+        .forUpdate()
+        .first();
+      const secondWallet = await trx("wallets")
+        .where({ user_id: secondUserId })
         .forUpdate()
         .first();
 
-      if (!senderWallet) throw new NotFoundError("Wallet not found");
+      const senderWallet = firstUserId === senderId ? firstWallet : secondWallet;
+      const receiverWallet = firstUserId === senderId ? secondWallet : firstWallet;
+
+      if (!senderWallet) throw new NotFoundError("Sender wallet not found");
+      if (!receiverWallet) throw new NotFoundError("Receiver wallet not found");
       if (senderWallet.balance < amount) throw new UnprocessableError("Insufficient funds");
 
       await trx("wallets")

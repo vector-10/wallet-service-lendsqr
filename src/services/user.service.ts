@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { encrypt, generateToken } from "../utils";
 import { AppError, ConflictError, ForbiddenError, UnprocessableError, ValidationError } from "../utils/errors";
 import adjutorService from "./adjutor.service";
-import { User, UserRecord, Wallet } from "../types";
+import { User, UserRecord, Wallet, RegisterInput, LoginInput, SafeUser } from "../types";
 
 class UserService {
   private async findUserByEmail(
@@ -12,19 +12,12 @@ class UserService {
     return db<UserRecord>("users").where({ email }).first();
   }
 
-  private sanitizeUser(user: UserRecord): Omit<UserRecord, 'password_hash' | 'bvn' | 'karma_checked_at' | 'updated_at'> {
+  private sanitizeUser(user: UserRecord): SafeUser {
     const { password_hash, bvn, karma_checked_at, updated_at, ...safeUser } = user;
     return safeUser;
   }
 
-  async register(data: {
-    first_name: string;
-    last_name: string;
-    email: string;
-    bvn: string;
-    phone: string;
-    password: string;
-  }): Promise<{ user: Partial<UserRecord>; token: string }> {
+  async register(data: RegisterInput): Promise<{ user: SafeUser; token: string }> {
     const existing = await this.findUserByEmail(data.email);
     if (existing) throw new ConflictError('Email already in use');
 
@@ -63,10 +56,7 @@ class UserService {
     return result;
   }
 
-  async login(data: {
-    email: string;
-    password: string;
-  }): Promise<{ user: Partial<UserRecord>; token: string }> {
+  async login(data: LoginInput): Promise<{ user: SafeUser; token: string }> {
     const user = await this.findUserByEmail(data.email);
     if (!user) throw new ValidationError("Invalid credentials");
 

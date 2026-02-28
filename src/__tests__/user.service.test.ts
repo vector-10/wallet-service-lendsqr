@@ -93,6 +93,33 @@ describe("UserService", () => {
         "Your identity has been flagged on the Lendsqr Karma blacklist. You cannot be onboarded.",
       );
     });
+
+    it("should throw 500 error if account was inserted but re-select returns null", async () => {
+      (mockedDb as any).mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue(null),
+      });
+
+      mockedAdjutor.checkKarmaBlacklist.mockResolvedValue(false);
+      (mockedBcrypt.hash as jest.Mock).mockResolvedValue("hashed_password");
+
+      (mockedDb as any).transaction = jest
+        .fn()
+        .mockImplementation(async (cb: any) => {
+          const trx: any = jest.fn().mockReturnValue({
+            where: jest.fn().mockReturnThis(),
+            insert: jest.fn().mockResolvedValue([1]),
+            first: jest.fn().mockResolvedValue(null), // re-select returns null
+          });
+          trx.where = jest.fn().mockReturnThis();
+          trx.insert = jest.fn().mockResolvedValue([1]);
+          return cb(trx);
+        });
+
+      await expect(userService.register(registerData)).rejects.toThrow(
+        "Failed to create account",
+      );
+    });
   });
 
   describe("login", () => {

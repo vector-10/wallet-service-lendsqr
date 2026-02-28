@@ -3,11 +3,12 @@ import axios from "axios";
 
 jest.mock("axios");
 const mockedAxios = axios as jest.Mocked<typeof axios>;
+mockedAxios.isAxiosError = jest.requireActual("axios").isAxiosError;
 
 describe("AdjutorService", () => {
   describe("checkKarmaBlacklist", () => {
     it("should return false when user is not blacklisted (404)", async () => {
-      mockedAxios.get.mockRejectedValueOnce({ response: { status: 404 } });
+      mockedAxios.get.mockRejectedValueOnce({ response: { status: 404 }, isAxiosError: true });
 
       const result = await adjutorService.checkKarmaBlacklist("22345678901");
       expect(result).toBe(false);
@@ -39,6 +40,7 @@ describe("AdjutorService", () => {
     it("should throw error when API call fails", async () => {
       mockedAxios.get.mockRejectedValueOnce({
         response: { status: 500 },
+        isAxiosError: true,
       });
 
       await expect(

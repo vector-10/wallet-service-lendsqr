@@ -170,4 +170,19 @@ describe('Wallet Routes', () => {
       expect(res.body.status).toBe(true);
     });
   });
+
+  describe('auth middleware', () => {
+    it('should return 401 when token verification throws (expired / tampered)', async () => {
+      mockedVerifyToken.mockImplementation(() => {
+        throw new Error('jwt expired');
+      });
+
+      const res = await request(app)
+        .get('/api/v1/wallet/balance')
+        .set('Authorization', 'Bearer invalid_token');
+
+      expect(res.status).toBe(401);
+      expect(res.body.message).toBe('Invalid or expired token');
+    });
+  });
 });

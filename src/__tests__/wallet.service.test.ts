@@ -98,23 +98,19 @@ describe("WalletService", () => {
       const incrementMock = jest.fn().mockResolvedValue(1);
       const insertMock = jest.fn().mockResolvedValue([1]);
 
-      // First db call: receiver user lookup
-      // Second db call: receiver wallet lookup
-      (mockedDb as any)
-        .mockReturnValueOnce({
-          where: jest.fn().mockReturnThis(),
-          first: jest.fn().mockResolvedValue(mockReceiver),
-        })
-        .mockReturnValueOnce({
-          where: jest.fn().mockReturnThis(),
-          first: jest.fn().mockResolvedValue(mockReceiverWallet),
-        });
+      (mockedDb as any).mockReturnValueOnce({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue(mockReceiver),
+      });
 
       (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
         const trx: any = jest.fn().mockReturnValue({
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
-          first: jest.fn().mockResolvedValue(mockWallet), // sender wallet, balance: 5000
+          // senderId=1 < receiver.id=2, so sender wallet locked first
+          first: jest.fn()
+            .mockResolvedValueOnce(mockWallet)        // sender (user_id: 1, locked first)
+            .mockResolvedValueOnce(mockReceiverWallet), // receiver (user_id: 2)
           decrement: decrementMock,
           increment: incrementMock,
           insert: insertMock,
@@ -151,7 +147,7 @@ describe("WalletService", () => {
     it("should throw error if sender transfers to themselves", async () => {
       (mockedDb as any).mockReturnValueOnce({
         where: jest.fn().mockReturnThis(),
-        first: jest.fn().mockResolvedValue({ ...mockReceiver, id: 1 }), // same id as sender
+        first: jest.fn().mockResolvedValue({ ...mockReceiver, id: 1 }),
       });
 
       await expect(
@@ -160,21 +156,18 @@ describe("WalletService", () => {
     });
 
     it("should throw error if insufficient funds", async () => {
-      (mockedDb as any)
-        .mockReturnValueOnce({
-          where: jest.fn().mockReturnThis(),
-          first: jest.fn().mockResolvedValue(mockReceiver),
-        })
-        .mockReturnValueOnce({
-          where: jest.fn().mockReturnThis(),
-          first: jest.fn().mockResolvedValue(mockReceiverWallet),
-        });
+      (mockedDb as any).mockReturnValueOnce({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue(mockReceiver),
+      });
 
       (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
         const trx: any = jest.fn().mockReturnValue({
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
-          first: jest.fn().mockResolvedValue({ ...mockWallet, balance: 100 }),
+          first: jest.fn()
+            .mockResolvedValueOnce({ ...mockWallet, balance: 100 }) // sender (user_id: 1)
+            .mockResolvedValueOnce(mockReceiverWallet),              // receiver (user_id: 2)
         });
         return cb(trx);
       });
@@ -182,6 +175,87 @@ describe("WalletService", () => {
       await expect(
         walletService.transferFunds(1, "receiver@gmail.com", 5000),
       ).rejects.toThrow("Insufficient funds");
+    });
+
+    it("should throw error if sender wallet not found inside transaction", async () => {
+      (mockedDb as any).mockReturnValueOnce({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue(mockReceiver),
+      });
+
+      (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
+        const trx: any = jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnThis(),
+          forUpdate: jest.fn().mockReturnThis(),
+          first: jest.fn()
+            .mockResolvedValueOnce(null)          // sender wallet missing
+            .mockResolvedValueOnce(mockReceiverWallet),
+        });
+        return cb(trx);
+      });
+
+      await expect(
+        walletService.transferFunds(1, "receiver@gmail.com", 100),
+      ).rejects.toThrow("Sender wallet not found");
+    });
+
+    it("should throw error if receiver wallet not found inside transaction", async () => {
+      (mockedDb as any).mockReturnValueOnce({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue(mockReceiver),
+      });
+
+      (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
+        const trx: any = jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnThis(),
+          forUpdate: jest.fn().mockReturnThis(),
+          first: jest.fn()
+            .mockResolvedValueOnce(mockWallet) // sender found
+            .mockResolvedValueOnce(null),      // receiver wallet missing
+        });
+        return cb(trx);
+      });
+
+      await expect(
+        walletService.transferFunds(1, "receiver@gmail.com", 100),
+      ).rejects.toThrow("Receiver wallet not found");
+    });
+
+    it("should lock receiver wallet first when receiver.id < senderId", async () => {
+      // receiver.id=1 < senderId=5 → receiver is locked first (lower user_id)
+      const highSenderId = 5;
+      const lowReceiverWallet = { ...mockWallet, id: 1, user_id: 1 };
+      const senderWallet = { ...mockWallet, id: 5, user_id: highSenderId, balance: 5000 };
+      const receiverWithLowerId = { ...mockReceiver, id: 1 };
+
+      const decrementMock = jest.fn().mockResolvedValue(1);
+      const incrementMock = jest.fn().mockResolvedValue(1);
+      const insertMock = jest.fn().mockResolvedValue([1]);
+
+      (mockedDb as any).mockReturnValueOnce({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue(receiverWithLowerId),
+      });
+
+      (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
+        const trx: any = jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnThis(),
+          forUpdate: jest.fn().mockReturnThis(),
+          // sort([5, 1]) = [1, 5] → receiver (user_id:1) locked first
+          first: jest.fn()
+            .mockResolvedValueOnce(lowReceiverWallet) // user_id:1 locked first
+            .mockResolvedValueOnce(senderWallet),     // user_id:5 locked second
+          decrement: decrementMock,
+          increment: incrementMock,
+          insert: insertMock,
+        });
+        return cb(trx);
+      });
+
+      const result = (await walletService.transferFunds(highSenderId, "receiver@gmail.com", 1000)) as any;
+      expect(result).toHaveProperty("reference");
+      expect(decrementMock).toHaveBeenCalledWith("balance", 1000);
+      expect(incrementMock).toHaveBeenCalledWith("balance", 1000);
     });
   });
 
@@ -196,8 +270,8 @@ describe("WalletService", () => {
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
           first: jest.fn()
-            .mockResolvedValueOnce(mockWallet)    // locked wallet read
-            .mockResolvedValueOnce(updatedWallet), // updated wallet after decrement
+            .mockResolvedValueOnce(mockWallet)    
+            .mockResolvedValueOnce(updatedWallet), 
           decrement: decrementMock,
           insert: insertMock,
         });
