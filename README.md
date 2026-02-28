@@ -1,6 +1,7 @@
 # Demo Credit — Wallet Service
 
-A backend wallet microservice built for the Lendsqr assessment. Borrowers can create accounts (with a wallet provisioned automatically), fund their wallets, transfer money to other users, withdraw funds, and view their transaction history. Any individual flagged on the Lendsqr Adjutor Karma blacklist is blocked at the point of registration and cannot be onboarded.
+A backend wallet service built to enable lending functionality. Users can create accounts (with a wallet provisioned automatically), fund their wallets, transfer funds to other users, withdraw funds, and view their transaction history. 
+On signup, the Lendsqr Adjutor Karma blacklist is used to detect past loan defaulters and refuse them getting onboarded.
 
 ---
 
@@ -12,7 +13,8 @@ A backend wallet microservice built for the Lendsqr assessment. Borrowers can cr
 - [Getting Started](#getting-started)
 - [Running the App](#running-the-app)
 - [Running Tests](#running-tests)
-- [API Reference](#api-reference)
+- [API Overview](#api-overview)
+- [Known Limitations](#known-limitations)
 - [Project Structure](#project-structure)
 
 ---
@@ -23,21 +25,21 @@ A backend wallet microservice built for the Lendsqr assessment. Borrowers can cr
 |---|---|
 | Runtime | Node.js |
 | Language | TypeScript |
-| Framework | Express 5 |
+| Framework | Express  |
 | Database | MySQL |
-| Query Builder | Knex.js |
+| Query ORM | Knex.js |
 | Authentication | JWT (jsonwebtoken) |
 | Password Hashing | bcryptjs |
 | BVN Encryption | AES-256-CBC (Node crypto) |
 | Blacklist Check | Lendsqr Adjutor Karma API |
 | Rate Limiting | express-rate-limit |
-| Testing | Jest + Supertest |
+| Testing | Jest  |
 
 ---
 
 ## Entity Relationship Diagram
 
-![ERD](./docs/erd.png)
+![ERD](https://erd.dbdesigner.net/designer/schema/1772075466-lensqr-wallet-service)
 
 > **Relationships:**
 > - One `user` has exactly one `wallet` (created atomically during registration)
@@ -50,21 +52,32 @@ A backend wallet microservice built for the Lendsqr assessment. Borrowers can cr
 ## Design Decisions
 
 ### Why MySQL
-MySQL was specified for this project and it is a natural fit for financial data. InnoDB's ACID compliance means a failed transaction is always rolled back cleanly — no partial state. The relational model also makes it straightforward to enforce the one-user-one-wallet constraint at the schema level.
+MySQL is a natural fit for a service handling financial data. It offers multiple benefits like ACID compliance, Data Integrity plus security and regulatory compliance in the industry. The relational model also makes it straightforward to enforce the one-user-one-wallet constraint at the schema level.
 
 ### Wallet provisioning at registration
-The user insert and wallet insert happen inside a single database transaction. Either both succeed or neither does. This means there is no window where a user exists without a wallet.
+The user insert and wallet insert queries happen inside a single database transaction. Either both succeed or not. This means there is no window where a user exists without a wallet.
 
 ### Row-level locking on transfers
-The first version of the transfer logic read the receiver's wallet outside the transaction. The problem with that is two concurrent transfers between the same two users in opposite directions can deadlock — each transaction holds a lock the other one is waiting for.
+When performing transfers, Knex's `forUpdate()` was used to lock both wallets inside the transaction in ascending `user_id` order no matter who is sending and who is receiving. This means every concurrent transfer grabs locks in the same order, so this eliminates risk of a dead-lock.
 
-The fix: both wallets are fetched with `SELECT FOR UPDATE` inside the same transaction, and they are always locked in ascending `user_id` order. Since all transactions acquire locks in the same sequence, circular waits cannot form.
+The balance check also happens inside the locked transaction — not before it. This means if two transfers try to drain the same wallet at the same time, the second one will see the already-updated balance from the first and correctly reject with insufficient funds, rather than both passing validation on a stale balance read.
 
-### BVN encryption
-BVN is stored encrypted (AES-256-CBC) rather than plain text. This service never needs to read the BVN back after storing it — it is only needed at the point of the karma check — so there is no decrypt function exposed.
 
 ### Karma check returns 404 for clean users
 The Adjutor API returns `404` when a BVN is not on the blacklist (not found = not blacklisted). Any other error (network failure, 5xx) is treated as a service outage and returns `503` to the caller rather than silently allowing registration.
+
+### Why Express over NestJS
+A framework like express allows me to uniopinionated control over the file structure and architecture, this enables me to demonstrate my skill in following best practices and clean code practices.
+
+### Security considerations
+The assessment spec noted that a faux token-based authentication would suffice. A single JWT is issued on login and verified on every protected request. There are no refresh tokens or token rotation — that would be the next step toward a production-grade auth system.
+
+- Passwords are hashed with bcrypt before storage and never returned in any response
+- BVN is used for Adjutor API check as each user has only one, as opposed to email or account number which a user can have multiple options
+- BVN is encrypted at rest using AES-256-CBC and excluded from all API responses
+- JWT tokens are stateless and short-lived (`JWT_EXPIRES_IN` in env)
+- Auth routes are rate-limited to 10 requests per 15 minutes per IP to slow brute-force attempts
+- Sensitive fields (`password_hash`, `bvn`, `karma_checked_at`) are removed from user objects when returning data
 
 ---
 
@@ -72,9 +85,9 @@ The Adjutor API returns `404` when a BVN is not on the blacklist (not found = no
 
 ### Prerequisites
 
-- Node.js >= 18
+- Node.js >= 18 (Version 24 LTS recommended)
 - MySQL >= 8
-- pnpm (or npm / yarn)
+- pnpm (or npm / yarn)  
 
 ### Installation
 
@@ -102,7 +115,7 @@ cp .env.example .env
 | `DB_PASSWORD` | MySQL password |
 | `DB_NAME` | Database name (test DB is `<DB_NAME>_test`) |
 | `JWT_SECRET` | Secret used to sign JWT tokens |
-| `JWT_EXPIRES_IN` | Token expiry e.g. `24h` |
+| `JWT_EXPIRES_IN` | Token expiry e.g. `7h` |
 | `ADJUTOR_BASE_URL` | Lendsqr Adjutor base URL |
 | `ADJUTOR_API_KEY` | Lendsqr Adjutor API key |
 | `ENCRYPTION_KEY` | 32-byte hex key for AES-256-CBC BVN encryption |
@@ -147,253 +160,37 @@ pnpm test:watch
 
 Tests use a separate `<DB_NAME>_test` database. All service and route layers are tested against mocked dependencies — no live database or external API calls are made during the test suite.
 
-Current coverage: **~99% statements, ~97% branches** across 66 tests.
-
 ---
 
-## API Reference
+## API Overview
 
 Base URL: `http://localhost:5000/api/v1`
 
-All responses follow this shape:
+**Authentication**
 
-```json
-{
-  "status": true | false,
-  "message": "string",
-  "data": {}
-}
-```
-
----
-
-### Auth
-
-#### Register
-
-```
-POST /auth/register
-```
-
-**Request**
-```json
-{
-  "first_name": "John",
-  "last_name": "Doe",
-  "email": "john.doe@example.com",
-  "bvn": "22345678901",
-  "phone": "08012345678",
-  "password": "Password123!"
-}
-```
-
-**Response `201`**
-```json
-{
-  "status": true,
-  "message": "Account created successfully",
-  "data": {
-    "user": {
-      "id": 1,
-      "first_name": "John",
-      "last_name": "Doe",
-      "email": "john.doe@example.com",
-      "phone": "08012345678",
-      "status": "active",
-      "created_at": "2026-02-28T10:00:00.000Z"
-    },
-    "token": "<jwt>"
-  }
-}
-```
-
-**Error cases**
-
-| Status | Reason |
+| Method | Endpoint |
 |---|---|
-| `400` | Missing required field |
-| `409` | Email already registered |
-| `422` | BVN is on the Adjutor Karma blacklist |
-| `503` | Adjutor API is unreachable |
+| `POST` | `/auth/register` |
+| `POST` | `/auth/login` |
 
----
+**Wallet** — requires `Authorization: Bearer <token>`
 
-#### Login
-
-```
-POST /auth/login
-```
-
-**Request**
-```json
-{
-  "email": "john.doe@example.com",
-  "password": "Password123!"
-}
-```
-
-**Response `200`**
-```json
-{
-  "status": true,
-  "message": "Login successful",
-  "data": {
-    "user": { ... },
-    "token": "<jwt>"
-  }
-}
-```
-
-> Rate limit: 10 requests per 15 minutes per IP on both auth endpoints.
-
----
-
-### Wallet
-
-All wallet endpoints require:
-
-```
-Authorization: Bearer <token>
-```
-
----
-
-#### Get Balance
-
-```
-GET /wallet/balance
-```
-
-**Response `200`**
-```json
-{
-  "status": true,
-  "message": "Wallet balance retrieved",
-  "data": {
-    "id": 1,
-    "user_id": 1,
-    "balance": "4500.00",
-    "currency": "NGN"
-  }
-}
-```
-
----
-
-#### Fund Wallet
-
-```
-POST /wallet/fund
-```
-
-**Request**
-```json
-{ "amount": 5000 }
-```
-
-**Response `200`**
-```json
-{
-  "status": true,
-  "message": "Wallet funded successfully",
-  "data": {
-    "wallet": { "id": 1, "balance": "5000.00", "currency": "NGN" },
-    "reference": "TXN-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-  }
-}
-```
-
----
-
-#### Transfer
-
-```
-POST /wallet/transfer
-```
-
-**Request**
-```json
-{
-  "receiver_email": "jane.doe@example.com",
-  "amount": 1000
-}
-```
-
-**Response `200`**
-```json
-{
-  "status": true,
-  "message": "Transfer successful",
-  "data": {
-    "reference": "TXN-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-    "amount": 1000,
-    "receiver": "jane.doe@example.com"
-  }
-}
-```
-
-**Error cases**
-
-| Status | Reason |
+| Method | Endpoint |
 |---|---|
-| `400` | Missing or invalid amount |
-| `404` | Receiver not found |
-| `422` | Insufficient funds |
-| `422` | Cannot transfer to yourself |
+| `GET` | `/wallet/balance` |
+| `POST` | `/wallet/fund` |
+| `POST` | `/wallet/transfer` |
+| `POST` | `/wallet/withdraw` |
+| `GET` | `/wallet/transactions` |
+
+Full request/response examples are available in the Postman collection (`postman_collection.json`) included in the repository root.
 
 ---
 
-#### Withdraw
+## Known Limitations
 
-```
-POST /wallet/withdraw
-```
-
-**Request**
-```json
-{ "amount": 500 }
-```
-
-**Response `200`**
-```json
-{
-  "status": true,
-  "message": "Withdrawal successful",
-  "data": {
-    "wallet": { "id": 1, "balance": "3500.00", "currency": "NGN" },
-    "reference": "TXN-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-  }
-}
-```
-
----
-
-#### Transaction History
-
-```
-GET /wallet/transactions
-```
-
-**Response `200`**
-```json
-{
-  "status": true,
-  "message": "Transaction history retrieved",
-  "data": [
-    {
-      "id": 3,
-      "reference": "TXN-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-      "source_wallet_id": null,
-      "destination_wallet_id": 1,
-      "type": "fund",
-      "amount": "5000.00",
-      "status": "success",
-      "narration": "Wallet Funded with NGN 5000",
-      "created_at": "2026-02-28T10:05:00.000Z"
-    }
-  ]
-}
-```
+- **Funding is simulated** — there is no payment gateway. The fund endpoint credits a wallet directly, representing what would happen after a real provider (Paystack, Flutterwave, etc.) confirms a deposit. In production, funding would be triggered by a webhook from the payment provider, not a direct API call.
+- **No idempotency keys** — submitting the same fund or transfer request twice will create two separate transactions. Production systems guard against this with a client-provided idempotency key so that retried requests do not result in duplicate money movements.
 
 ---
 
