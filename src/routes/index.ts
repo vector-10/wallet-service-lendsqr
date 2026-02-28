@@ -2,7 +2,7 @@ import { Router } from 'express';
 import userRoutes from './user.routes';
 import walletRoutes from './wallet.routes';
 
-const router = Router();
+const router: Router = Router();
 
 router.use('/auth', userRoutes);
 router.use('/wallet', walletRoutes);

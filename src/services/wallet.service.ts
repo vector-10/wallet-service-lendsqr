@@ -1,3 +1,4 @@
+import { Knex } from "knex";
 import { Wallet, Transaction, User, FundWalletResult, TransferResult, WithdrawResult } from "../types";
 import { generateReference } from "../utils";
 import db from "../config/database";
@@ -14,7 +15,7 @@ class WalletService {
   }
 
   private async recordTransaction(
-    trx: any,
+    trx: Knex.Transaction,
     data: {
       source_wallet_id: number | null | undefined;
       destination_wallet_id: number | null | undefined;

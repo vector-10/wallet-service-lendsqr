@@ -18,7 +18,6 @@ class AdjutorService {
         { headers: this.headers },
       );
       if (response.data?.["mock-response"]) return false;
-      console.log('Adjutor response:', JSON.stringify(response.data));
       return response.data?.data !== null && response.data?.data !== undefined;
     } catch (error: any) {
       if (error.response?.status === 404) return false;
