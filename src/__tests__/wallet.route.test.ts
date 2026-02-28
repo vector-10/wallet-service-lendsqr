@@ -2,6 +2,7 @@ import request from 'supertest';
 import app from '../app';
 import walletService from '../services/wallet.service';
 import * as tokenUtils from '../utils/token';
+import { UnprocessableError } from '../utils/errors';
 
 jest.mock('../services/wallet.service');
 jest.mock('../utils/token');
@@ -86,15 +87,15 @@ describe('Wallet Routes', () => {
       expect(res.status).toBe(400);
     });
 
-    it('should return 400 if insufficient funds', async () => {
-      mockedWalletService.transferFunds.mockRejectedValue(new Error('Insufficient funds'));
+    it('should return 422 if insufficient funds', async () => {
+      mockedWalletService.transferFunds.mockRejectedValue(new UnprocessableError('Insufficient funds'));
 
       const res = await request(app)
         .post('/api/v1/wallet/transfer')
         .set('Authorization', 'Bearer mock_token')
         .send({ receiver_email: 'receiver@gmail.com', amount: 999999 });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(422);
       expect(res.body.message).toBe('Insufficient funds');
     });
   });
@@ -115,15 +116,15 @@ describe('Wallet Routes', () => {
       expect(res.body.status).toBe(true);
     });
 
-    it('should return 400 if insufficient funds', async () => {
-      mockedWalletService.withdrawFunds.mockRejectedValue(new Error('Insufficient funds'));
+    it('should return 422 if insufficient funds', async () => {
+      mockedWalletService.withdrawFunds.mockRejectedValue(new UnprocessableError('Insufficient funds'));
 
       const res = await request(app)
         .post('/api/v1/wallet/withdraw')
         .set('Authorization', 'Bearer mock_token')
         .send({ amount: 999999 });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(422);
       expect(res.body.message).toBe('Insufficient funds');
     });
 

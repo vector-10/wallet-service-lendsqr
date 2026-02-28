@@ -6,39 +6,42 @@ class WalletController {
   fundWallet = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
     const { amount } = req.body;
+    const parsedAmount = Number(amount);
 
-    if (!amount) {
-      sendError(res, 'Amount is required', 400);
+    if (amount === undefined || amount === null || isNaN(parsedAmount) || parsedAmount <= 0) {
+      sendError(res, 'Amount must be a positive number', 400);
       return;
     }
 
-    const result = await walletService.fundWallet(userId, Number(amount));
+    const result = await walletService.fundWallet(userId, parsedAmount);
     sendSuccess(res, 'Wallet funded successfully', result);
   });
 
   transfer = asyncHandler(async (req: Request, res: Response) => {
     const senderId = req.user!.id;
     const { receiver_email, amount } = req.body;
+    const parsedAmount = Number(amount);
 
-    if (!receiver_email || !amount) {
-      sendError(res, 'Receiver email and amount are required', 400);
+    if (!receiver_email || amount === undefined || amount === null || isNaN(parsedAmount) || parsedAmount <= 0) {
+      sendError(res, 'Receiver email and a positive amount are required', 400);
       return;
     }
 
-    const result = await walletService.transferFunds(senderId, receiver_email, Number(amount));
+    const result = await walletService.transferFunds(senderId, receiver_email, parsedAmount);
     sendSuccess(res, 'Transfer successful', result);
   });
 
   withdraw = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
     const { amount } = req.body;
+    const parsedAmount = Number(amount);
 
-    if (!amount) {
-      sendError(res, 'Amount is required', 400);
+    if (amount === undefined || amount === null || isNaN(parsedAmount) || parsedAmount <= 0) {
+      sendError(res, 'Amount must be a positive number', 400);
       return;
     }
 
-    const result = await walletService.withdrawFunds(userId, Number(amount));
+    const result = await walletService.withdrawFunds(userId, parsedAmount);
     sendSuccess(res, 'Withdrawal successful', result);
   });
 

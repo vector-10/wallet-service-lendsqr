@@ -1,17 +1,18 @@
 import { Knex } from "knex";
 import { Wallet, Transaction, User, FundWalletResult, TransferResult, WithdrawResult } from "../types";
 import { generateReference } from "../utils";
+import { NotFoundError, UnprocessableError, ValidationError } from "../utils/errors";
 import db from "../config/database";
 
 class WalletService {
   private async findWalletByUserId(userId: number): Promise<Wallet> {
     const wallet = await db("wallets").where({ user_id: userId }).first();
-    if (!wallet) throw new Error("Wallet not found");
+    if (!wallet) throw new NotFoundError("Wallet not found");
     return wallet;
   }
 
   private validateAmount(amount: number) {
-    if (amount <= 0) throw new Error("Amount must be greater than zero");
+    if (isNaN(amount) || amount <= 0) throw new ValidationError("Amount must be greater than zero");
   }
 
   private async recordTransaction(
@@ -63,14 +64,13 @@ class WalletService {
     const receiver = await db<User>("users")
       .where({ email: receiverEmail })
       .first();
-    if (!receiver) throw new Error("Receiver not found");
-    if (receiver.id === senderId)
-      throw new Error("Cannot transfer to yourself");
+    if (!receiver) throw new NotFoundError("Receiver not found");
+    if (receiver.id === senderId) throw new UnprocessableError("Cannot transfer to yourself");
 
     const receiverWallet = await db<Wallet>("wallets")
       .where({ user_id: receiver.id })
       .first();
-    if (!receiverWallet) throw new Error("Receiver wallet not found");
+    if (!receiverWallet) throw new NotFoundError("Receiver wallet not found");
 
     return db.transaction(async (trx) => {
       const senderWallet = await trx("wallets")
@@ -78,8 +78,8 @@ class WalletService {
         .forUpdate()
         .first();
 
-      if (!senderWallet) throw new Error("Wallet not found");
-      if (senderWallet.balance < amount) throw new Error("Insufficient funds");
+      if (!senderWallet) throw new NotFoundError("Wallet not found");
+      if (senderWallet.balance < amount) throw new UnprocessableError("Insufficient funds");
 
       await trx("wallets")
         .where({ id: senderWallet.id })
@@ -109,8 +109,8 @@ class WalletService {
         .forUpdate()
         .first();
 
-      if (!wallet) throw new Error("Wallet not found");
-      if (wallet.balance < amount) throw new Error("Insufficient funds");
+      if (!wallet) throw new NotFoundError("Wallet not found");
+      if (wallet.balance < amount) throw new UnprocessableError("Insufficient funds");
 
       await trx("wallets")
         .where({ id: wallet.id })

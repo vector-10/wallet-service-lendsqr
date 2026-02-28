@@ -1,6 +1,7 @@
 import request from 'supertest';
 import app from '../app';
 import userService from '../services/user.service';
+import { ConflictError, UnprocessableError } from '../utils/errors';
 
 jest.mock('../services/user.service');
 const mockedUserService = userService as jest.Mocked<typeof userService>;
@@ -48,8 +49,8 @@ describe('Auth Routes', () => {
       expect(res.body.status).toBe(false);
     });
 
-    it('should return 400 if email already in use', async () => {
-      mockedUserService.register.mockRejectedValue(new Error('Email already in use'));
+    it('should return 409 if email already in use', async () => {
+      mockedUserService.register.mockRejectedValue(new ConflictError('Email already in use'));
 
       const res = await request(app)
         .post('/api/v1/auth/register')
@@ -62,13 +63,13 @@ describe('Auth Routes', () => {
           password: 'password123',
         });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(409);
       expect(res.body.message).toBe('Email already in use');
     });
 
-    it('should return 400 if user is blacklisted', async () => {
+    it('should return 422 if user is blacklisted', async () => {
       mockedUserService.register.mockRejectedValue(
-        new Error('Your identity has been flagged on the Lendsqr Karma blacklist. You cannot be onboarded.')
+        new UnprocessableError('Your identity has been flagged on the Lendsqr Karma blacklist. You cannot be onboarded.')
       );
 
       const res = await request(app)
@@ -82,7 +83,7 @@ describe('Auth Routes', () => {
           password: 'password123',
         });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(422);
       expect(res.body.message).toContain('blacklist');
     });
   });

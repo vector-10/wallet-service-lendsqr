@@ -159,5 +159,21 @@ describe("UserService", () => {
         }),
       ).rejects.toThrow("Account is blacklisted");
     });
+
+    it("should throw error if account is suspended", async () => {
+      (mockedDb as any).mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        first: jest
+          .fn()
+          .mockResolvedValue({ ...mockUser, status: "suspended" }),
+      });
+
+      await expect(
+        userService.login({
+          email: "johndoe@gmail.com",
+          password: "password123",
+        }),
+      ).rejects.toThrow("Account is suspended");
+    });
   });
 });

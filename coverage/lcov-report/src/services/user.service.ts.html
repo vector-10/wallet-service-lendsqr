@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">94.59% </span>
+                <span class="strong">97.29% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>35/37</span>
+                <span class='fraction'>36/37</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">85.71% </span>
+                <span class="strong">92.85% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>12/14</span>
+                <span class='fraction'>13/14</span>
             </div>
         
             
@@ -147,10 +147,7 @@
 <a name='L82'></a><a href='#L82'>82</a>
 <a name='L83'></a><a href='#L83'>83</a>
 <a name='L84'></a><a href='#L84'>84</a>
-<a name='L85'></a><a href='#L85'>85</a>
-<a name='L86'></a><a href='#L86'>86</a>
-<a name='L87'></a><a href='#L87'>87</a>
-<a name='L88'></a><a href='#L88'>88</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">3x</span>
+<a name='L85'></a><a href='#L85'>85</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
@@ -160,12 +157,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -205,9 +202,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -220,13 +214,13 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
@@ -250,8 +244,8 @@ class UserService {
     return db&lt;UserRecord&gt;("users").where({ email }).first();
   }
 &nbsp;
-  private sanitizeUser(user: User) {
-    const { password_hash, bvn, karma_checked_at, updated_at, ...safeUser } = user as any;
+  private sanitizeUser(user: UserRecord): Omit&lt;UserRecord, 'password_hash' | 'bvn' | 'karma_checked_at' | 'updated_at'&gt; {
+    const { password_hash, bvn, karma_checked_at, updated_at, ...safeUser } = user;
     return safeUser;
   }
 &nbsp;
@@ -290,15 +284,12 @@ class UserService {
       currency: 'NGN',
     });
 &nbsp;
-    const user = await trx&lt;UserRecord&gt;('users')
-      .where({ id: userId })
-      .select('id', 'first_name', 'last_name', 'email', 'phone', 'status', 'created_at')
-      .first();
+    const user = await trx&lt;UserRecord&gt;('users').where({ id: userId }).first();
 &nbsp;
     <span class="missing-if-branch" title="if path not taken" >I</span>if (!user) <span class="cstat-no" title="statement not covered" >throw new Error('Failed to create account');</span>
 &nbsp;
     const token = generateToken({ id: user.id, email: user.email });
-    return { user, token };
+    return { user: this.sanitizeUser(user), token };
   });
 &nbsp;
   return result;
@@ -313,7 +304,7 @@ class UserService {
 &nbsp;
     if (user.status === "blacklisted")
       throw new Error("Account is blacklisted");
-    <span class="missing-if-branch" title="if path not taken" >I</span>if (user.status === "suspended") <span class="cstat-no" title="statement not covered" >throw new Error("Account is suspended");</span>
+    if (user.status === "suspended") throw new Error("Account is suspended");
 &nbsp;
     const isMatch = await bcrypt.compare(data.password, user.password_hash);
     if (!isMatch) throw new Error("Invalid credentials");
@@ -331,7 +322,7 @@ export default new UserService();
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-27T15:22:19.208Z
+                at 2026-02-28T12:05:33.067Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

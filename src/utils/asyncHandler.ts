@@ -8,7 +8,8 @@ export const asyncHandler = (fn: AsyncController): AsyncController => {
     try {
       await fn(req, res, next);
     } catch (error: any) {
-      sendError(res, error.message, 400);
+      const statusCode = error.statusCode ?? 400;
+      sendError(res, error.message, statusCode);
     }
   };
 };

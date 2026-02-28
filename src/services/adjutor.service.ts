@@ -1,4 +1,5 @@
 import axios from "axios";
+import { AppError } from "../utils/errors";
 
 class AdjutorService {
   private baseUrl = process.env.ADJUTOR_BASE_URL;
@@ -21,8 +22,9 @@ class AdjutorService {
       return response.data?.data !== null && response.data?.data !== undefined;
     } catch (error: any) {
       if (error.response?.status === 404) return false;
-      throw new Error(
+      throw new AppError(
         "Identity verification failed. Please try again later or contact support.",
+        503,
       );
     }
   }
