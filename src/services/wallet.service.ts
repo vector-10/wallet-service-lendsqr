@@ -68,7 +68,7 @@ class WalletService {
     if (receiver.id === senderId) throw new UnprocessableError("Cannot transfer to yourself");
 
     return db.transaction(async (trx) => {
-      // Always lock in ascending user_id order to prevent circular deadlocks
+     
       const [firstUserId, secondUserId] = [senderId, receiver.id].sort((a, b) => a - b);
 
       const firstWallet = await trx("wallets")

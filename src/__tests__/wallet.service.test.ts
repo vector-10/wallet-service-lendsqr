@@ -107,10 +107,10 @@ describe("WalletService", () => {
         const trx: any = jest.fn().mockReturnValue({
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
-          // senderId=1 < receiver.id=2, so sender wallet locked first
+        
           first: jest.fn()
-            .mockResolvedValueOnce(mockWallet)        // sender (user_id: 1, locked first)
-            .mockResolvedValueOnce(mockReceiverWallet), // receiver (user_id: 2)
+            .mockResolvedValueOnce(mockWallet)      
+            .mockResolvedValueOnce(mockReceiverWallet), 
           decrement: decrementMock,
           increment: incrementMock,
           insert: insertMock,
@@ -166,8 +166,8 @@ describe("WalletService", () => {
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
           first: jest.fn()
-            .mockResolvedValueOnce({ ...mockWallet, balance: 100 }) // sender (user_id: 1)
-            .mockResolvedValueOnce(mockReceiverWallet),              // receiver (user_id: 2)
+            .mockResolvedValueOnce({ ...mockWallet, balance: 100 }) 
+            .mockResolvedValueOnce(mockReceiverWallet),              
         });
         return cb(trx);
       });
@@ -188,7 +188,7 @@ describe("WalletService", () => {
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
           first: jest.fn()
-            .mockResolvedValueOnce(null)          // sender wallet missing
+            .mockResolvedValueOnce(null)       
             .mockResolvedValueOnce(mockReceiverWallet),
         });
         return cb(trx);
@@ -210,8 +210,8 @@ describe("WalletService", () => {
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
           first: jest.fn()
-            .mockResolvedValueOnce(mockWallet) // sender found
-            .mockResolvedValueOnce(null),      // receiver wallet missing
+            .mockResolvedValueOnce(mockWallet) 
+            .mockResolvedValueOnce(null),     
         });
         return cb(trx);
       });
@@ -222,7 +222,7 @@ describe("WalletService", () => {
     });
 
     it("should lock receiver wallet first when receiver.id < senderId", async () => {
-      // receiver.id=1 < senderId=5 → receiver is locked first (lower user_id)
+
       const highSenderId = 5;
       const lowReceiverWallet = { ...mockWallet, id: 1, user_id: 1 };
       const senderWallet = { ...mockWallet, id: 5, user_id: highSenderId, balance: 5000 };
@@ -241,10 +241,10 @@ describe("WalletService", () => {
         const trx: any = jest.fn().mockReturnValue({
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
-          // sort([5, 1]) = [1, 5] → receiver (user_id:1) locked first
+ 
           first: jest.fn()
-            .mockResolvedValueOnce(lowReceiverWallet) // user_id:1 locked first
-            .mockResolvedValueOnce(senderWallet),     // user_id:5 locked second
+            .mockResolvedValueOnce(lowReceiverWallet) 
+            .mockResolvedValueOnce(senderWallet),    
           decrement: decrementMock,
           increment: incrementMock,
           insert: insertMock,

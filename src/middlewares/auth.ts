@@ -11,7 +11,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
       return;
     }
 
-    const token = authHeader.slice(7); // safe: we already verified it starts with 'Bearer '
+    const token = authHeader.slice(7);  
     const decoded = verifyToken(token);
     req.user = decoded;
     next();

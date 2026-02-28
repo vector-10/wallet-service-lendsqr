@@ -41,7 +41,7 @@ describe("asyncHandler", () => {
   });
 
   it("should use fallback message when a non-Error value is thrown", async () => {
-    // Someone throws a plain string — not an Error instance
+
     const fn = jest.fn().mockRejectedValue("a plain string");
     const res = makeRes();
     await asyncHandler(fn)(mockReq, res, mockNext);

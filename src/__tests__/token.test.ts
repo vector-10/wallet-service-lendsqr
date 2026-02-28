@@ -45,13 +45,13 @@ describe("token utils", () => {
     });
 
     it("should throw 'Invalid token payload' when id and email are missing", () => {
-      // Valid JWT signature but payload lacks id and email
+
       const badToken = jwt.sign({ role: "admin" }, TEST_SECRET);
       expect(() => verifyToken(badToken)).toThrow("Invalid token payload");
     });
 
     it("should throw 'Invalid token payload' when payload is a plain string", () => {
-      // jwt.sign with a string produces a token whose decoded value is a string
+     
       const stringToken = jwt.sign("raw-string-payload", TEST_SECRET);
       expect(() => verifyToken(stringToken)).toThrow("Invalid token payload");
     });

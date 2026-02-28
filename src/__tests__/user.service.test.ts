@@ -109,7 +109,7 @@ describe("UserService", () => {
           const trx: any = jest.fn().mockReturnValue({
             where: jest.fn().mockReturnThis(),
             insert: jest.fn().mockResolvedValue([1]),
-            first: jest.fn().mockResolvedValue(null), // re-select returns null
+            first: jest.fn().mockResolvedValue(null), 
           });
           trx.where = jest.fn().mockReturnThis();
           trx.insert = jest.fn().mockResolvedValue([1]);
