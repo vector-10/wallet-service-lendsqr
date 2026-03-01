@@ -39,7 +39,7 @@ On signup, the Lendsqr Adjutor Karma blacklist is used to detect past loan defau
 
 ## Entity Relationship Diagram
 
-[ERD DIAGRAM](https://erd.dbdesigner.net/designer/schema/1772075466-lensqr-wallet-service)
+![ERD Diagram](docs/erd.png)
 
 > **Relationships:**
 > - One `user` has exactly one `wallet` (created atomically during registration)
