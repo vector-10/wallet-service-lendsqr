@@ -1,1 +1,0 @@
-{"version":3,"file":"rateLimiter.js","sourceRoot":"","sources":["../../../src/middlewares/rateLimiter.ts"],"names":[],"mappings":";;;;;;AAAA,4EAA2C;AAE9B,QAAA,WAAW,GAAG,IAAA,4BAAS,EAAC;IACnC,QAAQ,EAAE,EAAE,GAAG,EAAE,GAAG,IAAI;IACxB,KAAK,EAAE,EAAE;IACT,OAAO,EAAE;QACP,MAAM,EAAE,KAAK;QACb,OAAO,EAAE,oEAAoE;KAC9E;IACD,eAAe,EAAE,SAAS;IAC1B,aAAa,EAAE,KAAK;CACrB,CAAC,CAAC"}

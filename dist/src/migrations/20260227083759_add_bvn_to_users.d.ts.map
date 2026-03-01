@@ -1,1 +1,0 @@
-{"version":3,"file":"20260227083759_add_bvn_to_users.d.ts","sourceRoot":"","sources":["../../../src/migrations/20260227083759_add_bvn_to_users.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,IAAI,EAAE,MAAM,MAAM,CAAC;AAE5B,wBAAsB,EAAE,CAAC,IAAI,EAAE,IAAI,GAAG,OAAO,CAAC,IAAI,CAAC,CAIlD;AAED,wBAAsB,IAAI,CAAC,IAAI,EAAE,IAAI,GAAG,OAAO,CAAC,IAAI,CAAC,CAIpD"}
