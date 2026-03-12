@@ -11,7 +11,12 @@
       "type": "string"
     },
     {
-      "key": "token",
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
       "value": "",
       "type": "string"
     }
@@ -41,8 +46,9 @@
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "  const json = pm.response.json();",
-                  "  pm.collectionVariables.set('token', json.data.token);",
-                  "  console.log('Token saved from register');",
+                  "  pm.collectionVariables.set('access_token', json.data.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', json.data.refresh_token);",
+                  "  console.log('Tokens saved from register');",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -75,8 +81,9 @@
                 "exec": [
                   "if (pm.response.code === 200) {",
                   "  const json = pm.response.json();",
-                  "  pm.collectionVariables.set('token', json.data.token);",
-                  "  console.log('Token saved from login');",
+                  "  pm.collectionVariables.set('access_token', json.data.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', json.data.refresh_token);",
+                  "  console.log('Tokens saved from login');",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -96,6 +103,60 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', json.data.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', json.data.refresh_token);",
+                  "  console.log('Tokens rotated');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
               "options": { "raw": { "language": "json" } }
             }
           }
@@ -156,6 +217,25 @@
               "options": { "raw": { "language": "json" } }
             }
           }
+        },
+        {
+          "name": "Refresh - missing token (expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
         }
       ]
     },
@@ -167,7 +247,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "url": {
               "raw": "{{base_url}}/api/v1/wallet/balance",
@@ -182,7 +262,8 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Idempotency-Key", "value": "fund-001" }
             ],
             "url": {
               "raw": "{{base_url}}/api/v1/wallet/fund",
@@ -202,7 +283,8 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Idempotency-Key", "value": "transfer-001" }
             ],
             "url": {
               "raw": "{{base_url}}/api/v1/wallet/transfer",
@@ -211,7 +293,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receiver_email\": \"jane.doe@example.com\",\n  \"amount\": 1000\n}",
+              "raw": "{\n  \"receiver_account_number\": \"4023819475\",\n  \"amount\": 1000\n}",
               "options": { "raw": { "language": "json" } }
             }
           }
@@ -222,7 +304,8 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Idempotency-Key", "value": "withdraw-001" }
             ],
             "url": {
               "raw": "{{base_url}}/api/v1/wallet/withdraw",
@@ -241,7 +324,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "url": {
               "raw": "{{base_url}}/api/v1/wallet/transactions",
@@ -256,7 +339,8 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Idempotency-Key", "value": "fund-invalid-001" }
             ],
             "url": {
               "raw": "{{base_url}}/api/v1/wallet/fund",
@@ -271,12 +355,33 @@
           }
         },
         {
+          "name": "Fund - missing idempotency key (expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/wallet/fund",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "wallet", "fund"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
           "name": "Transfer - to yourself (expect 422)",
           "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Idempotency-Key", "value": "transfer-self-001" }
             ],
             "url": {
               "raw": "{{base_url}}/api/v1/wallet/transfer",
@@ -285,7 +390,28 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receiver_email\": \"john.doe@example.com\",\n  \"amount\": 100\n}",
+              "raw": "{\n  \"receiver_account_number\": \"4000000001\",\n  \"amount\": 100\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Transfer - invalid account number (expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Idempotency-Key", "value": "transfer-invalid-001" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/wallet/transfer",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "wallet", "transfer"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiver_account_number\": \"123\",\n  \"amount\": 100\n}",
               "options": { "raw": { "language": "json" } }
             }
           }
@@ -296,7 +422,8 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Idempotency-Key", "value": "withdraw-insuf-001" }
             ],
             "url": {
               "raw": "{{base_url}}/api/v1/wallet/withdraw",
