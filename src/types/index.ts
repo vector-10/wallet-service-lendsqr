@@ -6,7 +6,7 @@ export interface User {
   bvn: string;
   phone: string;
   password_hash: string;
-  status?: 'active' | 'blacklisted' | 'suspended';
+  status?: "active" | "blacklisted" | "suspended";
   karma_checked_at?: Date | null;
   created_at?: Date;
   updated_at?: Date;
@@ -14,13 +14,33 @@ export interface User {
 
 export interface UserRecord extends User {
   id: number;
-  status: 'active' | 'blacklisted' | 'suspended';
+  status: "active" | "blacklisted" | "suspended";
   karma_checked_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
 
-export type SafeUser = Omit<UserRecord, 'password_hash' | 'bvn' | 'karma_checked_at' | 'updated_at'>;
+export interface RefreshToken {
+  id: number;
+  user_id: number;
+  token_hash: string;
+  expires_at: Date;
+  is_revoked: boolean;
+  created_at: Date;
+}
+
+export type SafeUser = Omit<
+  UserRecord,
+  "password_hash" | "bvn" | "karma_checked_at" | "updated_at"
+>;
+
+
+export interface AuthResult {
+  user: SafeUser;
+  access_token: string;
+  refresh_token: string;
+}
+
 
 export interface RegisterInput {
   first_name: string;
@@ -52,9 +72,9 @@ export interface Transaction {
   reference: string;
   source_wallet_id?: number | null;
   destination_wallet_id?: number | null;
-  type: 'fund' | 'transfer' | 'withdraw';
+  type: "fund" | "transfer" | "withdraw";
   amount: number;
-  status?: 'pending' | 'success' | 'failed';
+  status?: "pending" | "success" | "failed";
   narration?: string | null;
   created_at?: Date;
 }
