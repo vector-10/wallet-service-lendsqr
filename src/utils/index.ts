@@ -6,4 +6,3 @@ export * from './asyncHandler';
 export * from './errors';
 export * from './validateEnv';
 export * from './accountNumber';
-export * from './token';
