@@ -1,6 +1,6 @@
 import db from "../config/database";
 import bcrypt from "bcryptjs";
-import { encrypt, generateToken } from "../utils";
+import { encrypt, generateToken, generateAccountNumber } from "../utils";
 import { AppError, ConflictError, ForbiddenError, UnprocessableError, ValidationError } from "../utils/errors";
 import adjutorService from "./adjutor.service";
 import { User, UserRecord, Wallet, RegisterInput, LoginInput, SafeUser } from "../types";
@@ -39,10 +39,12 @@ class UserService {
         karma_checked_at: new Date(),
       });
 
+      const account_number = await generateAccountNumber(trx);
       await trx<Wallet>('wallets').insert({
         user_id: userId,
         balance: 0.0,
         currency: 'NGN',
+        account_number,
       });
 
       const user = await trx<UserRecord>('users').where({ id: userId }).first();

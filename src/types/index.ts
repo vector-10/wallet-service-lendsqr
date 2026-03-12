@@ -40,7 +40,8 @@ export interface Wallet {
   id?: number;
   user_id: number;
   balance: number;
-  minimum_balance?: number;
+  minimum_balance: number;
+  account_number: string;
   currency?: string;
   created_at?: Date;
   updated_at?: Date;
@@ -71,7 +72,7 @@ export interface FundWalletResult {
 export interface TransferResult {
   reference: string;
   amount: number;
-  receiver: string;
+  receiver_account_number: string;
 }
 
 export interface WithdrawResult {

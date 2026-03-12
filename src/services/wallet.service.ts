@@ -1,7 +1,17 @@
 import { Knex } from "knex";
-import { Wallet, Transaction, UserRecord, FundWalletResult, TransferResult, WithdrawResult } from "../types";
+import {
+  Wallet,
+  Transaction,
+  FundWalletResult,
+  TransferResult,
+  WithdrawResult,
+} from "../types";
 import { generateReference } from "../utils";
-import { NotFoundError, UnprocessableError, ValidationError } from "../utils/errors";
+import {
+  NotFoundError,
+  UnprocessableError,
+  ValidationError,
+} from "../utils/errors";
 import db from "../config/database";
 
 class WalletService {
@@ -12,7 +22,8 @@ class WalletService {
   }
 
   private validateAmount(amount: number) {
-    if (isNaN(amount) || amount <= 0) throw new ValidationError("Amount must be greater than zero");
+    if (isNaN(amount) || amount <= 0)
+      throw new ValidationError("Amount must be greater than zero");
   }
 
   private async recordTransaction(
@@ -56,20 +67,22 @@ class WalletService {
 
   async transferFunds(
     senderId: number,
-    receiverEmail: string,
+    receiverAccountNumber: string,
     amount: number,
   ): Promise<TransferResult> {
     this.validateAmount(amount);
 
-    const receiver = await db<UserRecord>("users")
-      .where({ email: receiverEmail })
+    const receiverWallet = await db<Wallet>("wallets")
+      .where({ account_number: receiverAccountNumber })
       .first();
-    if (!receiver) throw new NotFoundError("Receiver not found");
-    if (receiver.id === senderId) throw new UnprocessableError("Cannot transfer to yourself");
+    if (!receiverWallet) throw new NotFoundError("Receiver not found");
+    if (receiverWallet.user_id === senderId)
+      throw new UnprocessableError("Cannot transfer to yourself");
 
     return db.transaction(async (trx) => {
-     
-      const [firstUserId, secondUserId] = [senderId, receiver.id].sort((a, b) => a - b);
+      const [firstUserId, secondUserId] = [senderId, receiverWallet.user_id].sort(
+        (a, b) => a - b,
+      );
 
       const firstWallet = await trx("wallets")
         .where({ user_id: firstUserId })
@@ -80,32 +93,36 @@ class WalletService {
         .forUpdate()
         .first();
 
-      const senderWallet = firstUserId === senderId ? firstWallet : secondWallet;
-      const receiverWallet = firstUserId === senderId ? secondWallet : firstWallet;
+      const senderWallet =
+        firstUserId === senderId ? firstWallet : secondWallet;
+      const lockedReceiverWallet =
+        firstUserId === senderId ? secondWallet : firstWallet;
 
       if (!senderWallet) throw new NotFoundError("Sender wallet not found");
-      if (!receiverWallet) throw new NotFoundError("Receiver wallet not found");
+      if (!lockedReceiverWallet) throw new NotFoundError("Receiver wallet not found");
       const senderMinimum = senderWallet.minimum_balance ?? 100;
       if (senderWallet.balance - amount < senderMinimum) {
-        throw new UnprocessableError(`Insufficient funds. A minimum balance of NGN ${senderMinimum} must be maintained.`);
+        throw new UnprocessableError(
+          `Insufficient funds. A minimum balance of NGN ${senderMinimum} must be maintained.`,
+        );
       }
 
       await trx("wallets")
         .where({ id: senderWallet.id })
         .decrement("balance", amount);
       await trx("wallets")
-        .where({ id: receiverWallet.id })
+        .where({ id: lockedReceiverWallet.id })
         .increment("balance", amount);
 
       const reference = await this.recordTransaction(trx, {
         source_wallet_id: senderWallet.id,
-        destination_wallet_id: receiverWallet.id,
+        destination_wallet_id: lockedReceiverWallet.id,
         type: "transfer",
         amount,
-        narration: `Transfer of NGN ${amount} to ${receiverEmail}`,
+        narration: `Transfer of NGN ${amount} to ${receiverAccountNumber}`,
       });
 
-      return { reference, amount, receiver: receiverEmail };
+      return { reference, amount, receiver_account_number: receiverAccountNumber };
     });
   }
 
@@ -121,7 +138,9 @@ class WalletService {
       if (!wallet) throw new NotFoundError("Wallet not found");
       const minimum = wallet.minimum_balance ?? 100;
       if (wallet.balance - amount < minimum) {
-        throw new UnprocessableError(`Insufficient funds. A minimum balance of NGN ${minimum} must be maintained.`);
+        throw new UnprocessableError(
+          `Insufficient funds. A minimum balance of NGN ${minimum} must be maintained.`,
+        );
       }
 
       await trx("wallets")
