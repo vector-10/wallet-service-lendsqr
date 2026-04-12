@@ -10,20 +10,8 @@ const mockWallet = {
   user_id: 1,
   balance: 5000,
   minimum_balance: 100,
+  account_number: "4000000001",
   currency: "NGN",
-  created_at: new Date(),
-  updated_at: new Date(),
-};
-
-const mockReceiver = {
-  id: 2,
-  first_name: "Jane",
-  last_name: "Doe",
-  email: "receiver@gmail.com",
-  phone: "+2348012345679",
-  bvn: "encrypted_bvn",
-  password_hash: "hashed_password",
-  status: "active" as const,
   created_at: new Date(),
   updated_at: new Date(),
 };
@@ -33,6 +21,7 @@ const mockReceiverWallet = {
   user_id: 2,
   balance: 1000,
   minimum_balance: 100,
+  account_number: "4000000002",
   currency: "NGN",
   created_at: new Date(),
   updated_at: new Date(),
@@ -102,17 +91,16 @@ describe("WalletService", () => {
 
       (mockedDb as any).mockReturnValueOnce({
         where: jest.fn().mockReturnThis(),
-        first: jest.fn().mockResolvedValue(mockReceiver),
+        first: jest.fn().mockResolvedValue(mockReceiverWallet),
       });
 
       (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
         const trx: any = jest.fn().mockReturnValue({
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
-        
           first: jest.fn()
-            .mockResolvedValueOnce(mockWallet)      
-            .mockResolvedValueOnce(mockReceiverWallet), 
+            .mockResolvedValueOnce(mockWallet)
+            .mockResolvedValueOnce(mockReceiverWallet),
           decrement: decrementMock,
           increment: incrementMock,
           insert: insertMock,
@@ -120,18 +108,18 @@ describe("WalletService", () => {
         return cb(trx);
       });
 
-      const result = (await walletService.transferFunds(1, "receiver@gmail.com", 1000)) as any;
+      const result = (await walletService.transferFunds(1, "4000000002", 1000)) as any;
 
       expect(result).toHaveProperty("reference");
       expect(result.amount).toBe(1000);
-      expect(result.receiver).toBe("receiver@gmail.com");
+      expect(result.receiver_account_number).toBe("4000000002");
       expect(decrementMock).toHaveBeenCalledWith("balance", 1000);
       expect(incrementMock).toHaveBeenCalledWith("balance", 1000);
     });
 
     it("should throw error if amount is zero or negative", async () => {
       await expect(
-        walletService.transferFunds(1, "receiver@gmail.com", 0),
+        walletService.transferFunds(1, "4000000002", 0),
       ).rejects.toThrow("Amount must be greater than zero");
     });
 
@@ -142,25 +130,25 @@ describe("WalletService", () => {
       });
 
       await expect(
-        walletService.transferFunds(1, "unknown@gmail.com", 100),
+        walletService.transferFunds(1, "4999999999", 100),
       ).rejects.toThrow("Receiver not found");
     });
 
     it("should throw error if sender transfers to themselves", async () => {
       (mockedDb as any).mockReturnValueOnce({
         where: jest.fn().mockReturnThis(),
-        first: jest.fn().mockResolvedValue({ ...mockReceiver, id: 1 }),
+        first: jest.fn().mockResolvedValue({ ...mockReceiverWallet, user_id: 1 }),
       });
 
       await expect(
-        walletService.transferFunds(1, "same@gmail.com", 100),
+        walletService.transferFunds(1, "4000000002", 100),
       ).rejects.toThrow("Cannot transfer to yourself");
     });
 
     it("should throw error if insufficient funds", async () => {
       (mockedDb as any).mockReturnValueOnce({
         where: jest.fn().mockReturnThis(),
-        first: jest.fn().mockResolvedValue(mockReceiver),
+        first: jest.fn().mockResolvedValue(mockReceiverWallet),
       });
 
       (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
@@ -175,14 +163,14 @@ describe("WalletService", () => {
       });
 
       await expect(
-        walletService.transferFunds(1, "receiver@gmail.com", 5000),
+        walletService.transferFunds(1, "4000000002", 5000),
       ).rejects.toThrow("Insufficient funds");
     });
 
     it("should throw error if transfer would breach minimum balance", async () => {
       (mockedDb as any).mockReturnValueOnce({
         where: jest.fn().mockReturnThis(),
-        first: jest.fn().mockResolvedValue(mockReceiver),
+        first: jest.fn().mockResolvedValue(mockReceiverWallet),
       });
 
       (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
@@ -198,14 +186,14 @@ describe("WalletService", () => {
       });
 
       await expect(
-        walletService.transferFunds(1, "receiver@gmail.com", 100),
+        walletService.transferFunds(1, "4000000002", 100),
       ).rejects.toThrow("Insufficient funds. A minimum balance of NGN 100 must be maintained.");
     });
 
     it("should throw error if sender wallet not found inside transaction", async () => {
       (mockedDb as any).mockReturnValueOnce({
         where: jest.fn().mockReturnThis(),
-        first: jest.fn().mockResolvedValue(mockReceiver),
+        first: jest.fn().mockResolvedValue(mockReceiverWallet),
       });
 
       (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
@@ -213,21 +201,21 @@ describe("WalletService", () => {
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
           first: jest.fn()
-            .mockResolvedValueOnce(null)       
+            .mockResolvedValueOnce(null)
             .mockResolvedValueOnce(mockReceiverWallet),
         });
         return cb(trx);
       });
 
       await expect(
-        walletService.transferFunds(1, "receiver@gmail.com", 100),
+        walletService.transferFunds(1, "4000000002", 100),
       ).rejects.toThrow("Sender wallet not found");
     });
 
     it("should throw error if receiver wallet not found inside transaction", async () => {
       (mockedDb as any).mockReturnValueOnce({
         where: jest.fn().mockReturnThis(),
-        first: jest.fn().mockResolvedValue(mockReceiver),
+        first: jest.fn().mockResolvedValue(mockReceiverWallet),
       });
 
       (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
@@ -235,23 +223,21 @@ describe("WalletService", () => {
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
           first: jest.fn()
-            .mockResolvedValueOnce(mockWallet) 
-            .mockResolvedValueOnce(null),     
+            .mockResolvedValueOnce(mockWallet)
+            .mockResolvedValueOnce(null),
         });
         return cb(trx);
       });
 
       await expect(
-        walletService.transferFunds(1, "receiver@gmail.com", 100),
+        walletService.transferFunds(1, "4000000002", 100),
       ).rejects.toThrow("Receiver wallet not found");
     });
 
     it("should lock receiver wallet first when receiver.id < senderId", async () => {
-
       const highSenderId = 5;
-      const lowReceiverWallet = { ...mockWallet, id: 1, user_id: 1 };
+      const lowReceiverWallet = { ...mockReceiverWallet, id: 1, user_id: 1 };
       const senderWallet = { ...mockWallet, id: 5, user_id: highSenderId, balance: 5000 };
-      const receiverWithLowerId = { ...mockReceiver, id: 1 };
 
       const decrementMock = jest.fn().mockResolvedValue(1);
       const incrementMock = jest.fn().mockResolvedValue(1);
@@ -259,17 +245,16 @@ describe("WalletService", () => {
 
       (mockedDb as any).mockReturnValueOnce({
         where: jest.fn().mockReturnThis(),
-        first: jest.fn().mockResolvedValue(receiverWithLowerId),
+        first: jest.fn().mockResolvedValue(lowReceiverWallet),
       });
 
       (mockedDb as any).transaction = jest.fn().mockImplementation(async (cb: any) => {
         const trx: any = jest.fn().mockReturnValue({
           where: jest.fn().mockReturnThis(),
           forUpdate: jest.fn().mockReturnThis(),
- 
           first: jest.fn()
-            .mockResolvedValueOnce(lowReceiverWallet) 
-            .mockResolvedValueOnce(senderWallet),    
+            .mockResolvedValueOnce(lowReceiverWallet)
+            .mockResolvedValueOnce(senderWallet),
           decrement: decrementMock,
           increment: incrementMock,
           insert: insertMock,
@@ -277,7 +262,7 @@ describe("WalletService", () => {
         return cb(trx);
       });
 
-      const result = (await walletService.transferFunds(highSenderId, "receiver@gmail.com", 1000)) as any;
+      const result = (await walletService.transferFunds(highSenderId, "4000000002", 1000)) as any;
       expect(result).toHaveProperty("reference");
       expect(decrementMock).toHaveBeenCalledWith("balance", 1000);
       expect(incrementMock).toHaveBeenCalledWith("balance", 1000);

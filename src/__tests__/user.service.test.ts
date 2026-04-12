@@ -66,7 +66,8 @@ describe("UserService", () => {
         });
 
       const result = await userService.register(registerData);
-      expect(result).toHaveProperty("token");
+      expect(result).toHaveProperty("access_token");
+      expect(result).toHaveProperty("refresh_token");
       expect(result).toHaveProperty("user");
     });
 
@@ -136,7 +137,8 @@ describe("UserService", () => {
         password: "password123",
       });
 
-      expect(result).toHaveProperty("token");
+      expect(result).toHaveProperty("access_token");
+      expect(result).toHaveProperty("refresh_token");
       expect(result.user).not.toHaveProperty("password_hash");
       expect(result.user).not.toHaveProperty("bvn");
     });

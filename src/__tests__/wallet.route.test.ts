@@ -15,6 +15,8 @@ const mockWallet = {
   id: 1,
   user_id: 1,
   balance: 5000,
+  minimum_balance: 100,
+  account_number: '4000000001',
   currency: 'NGN',
   created_at: new Date(),
   updated_at: new Date(),
@@ -35,6 +37,7 @@ describe('Wallet Routes', () => {
       const res = await request(app)
         .post('/api/v1/wallet/fund')
         .set('Authorization', 'Bearer mock_token')
+        .set('Idempotency-Key', 'fund-001')
         .send({ amount: 5000 });
 
       expect(res.status).toBe(200);
@@ -46,6 +49,7 @@ describe('Wallet Routes', () => {
       const res = await request(app)
         .post('/api/v1/wallet/fund')
         .set('Authorization', 'Bearer mock_token')
+        .set('Idempotency-Key', 'fund-002')
         .send({});
 
       expect(res.status).toBe(400);
@@ -66,22 +70,24 @@ describe('Wallet Routes', () => {
       mockedWalletService.transferFunds.mockResolvedValue({
         reference: 'TXN-456',
         amount: 1000,
-        receiver: 'receiver@gmail.com',
+        receiver_account_number: '4000000002',
       });
 
       const res = await request(app)
         .post('/api/v1/wallet/transfer')
         .set('Authorization', 'Bearer mock_token')
-        .send({ receiver_email: 'receiver@gmail.com', amount: 1000 });
+        .set('Idempotency-Key', 'transfer-001')
+        .send({ receiver_account_number: '4000000002', amount: 1000 });
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe(true);
     });
 
-    it('should return 400 if receiver email is missing', async () => {
+    it('should return 400 if receiver account number is missing', async () => {
       const res = await request(app)
         .post('/api/v1/wallet/transfer')
         .set('Authorization', 'Bearer mock_token')
+        .set('Idempotency-Key', 'transfer-002')
         .send({ amount: 1000 });
 
       expect(res.status).toBe(400);
@@ -93,7 +99,8 @@ describe('Wallet Routes', () => {
       const res = await request(app)
         .post('/api/v1/wallet/transfer')
         .set('Authorization', 'Bearer mock_token')
-        .send({ receiver_email: 'receiver@gmail.com', amount: 999999 });
+        .set('Idempotency-Key', 'transfer-003')
+        .send({ receiver_account_number: '4000000002', amount: 999999 });
 
       expect(res.status).toBe(422);
       expect(res.body.message).toBe('Insufficient funds');
@@ -110,6 +117,7 @@ describe('Wallet Routes', () => {
       const res = await request(app)
         .post('/api/v1/wallet/withdraw')
         .set('Authorization', 'Bearer mock_token')
+        .set('Idempotency-Key', 'withdraw-001')
         .send({ amount: 500 });
 
       expect(res.status).toBe(200);
@@ -122,6 +130,7 @@ describe('Wallet Routes', () => {
       const res = await request(app)
         .post('/api/v1/wallet/withdraw')
         .set('Authorization', 'Bearer mock_token')
+        .set('Idempotency-Key', 'withdraw-002')
         .send({ amount: 999999 });
 
       expect(res.status).toBe(422);
@@ -132,6 +141,7 @@ describe('Wallet Routes', () => {
       const res = await request(app)
         .post('/api/v1/wallet/withdraw')
         .set('Authorization', 'Bearer mock_token')
+        .set('Idempotency-Key', 'withdraw-003')
         .send({});
 
       expect(res.status).toBe(400);

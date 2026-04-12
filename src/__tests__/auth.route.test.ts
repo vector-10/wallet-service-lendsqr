@@ -21,7 +21,8 @@ describe('Auth Routes', () => {
     it('should register user successfully', async () => {
       mockedUserService.register.mockResolvedValue({
         user: mockUser,
-        token: 'mock_token',
+        access_token: 'mock_access_token',
+        refresh_token: 'mock_refresh_token',
       });
 
       const res = await request(app)
@@ -37,7 +38,8 @@ describe('Auth Routes', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.status).toBe(true);
-      expect(res.body.data).toHaveProperty('token');
+      expect(res.body.data).toHaveProperty('access_token');
+      expect(res.body.data).toHaveProperty('refresh_token');
     });
 
     it('should return 400 if required fields are missing', async () => {
@@ -92,7 +94,8 @@ describe('Auth Routes', () => {
     it('should login successfully', async () => {
       mockedUserService.login.mockResolvedValue({
         user: mockUser,
-        token: 'mock_token',
+        access_token: 'mock_access_token',
+        refresh_token: 'mock_refresh_token',
       });
 
       const res = await request(app)
@@ -101,7 +104,8 @@ describe('Auth Routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe(true);
-      expect(res.body.data).toHaveProperty('token');
+      expect(res.body.data).toHaveProperty('access_token');
+      expect(res.body.data).toHaveProperty('refresh_token');
     });
 
     it('should return 400 if credentials are invalid', async () => {
