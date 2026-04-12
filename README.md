@@ -49,6 +49,7 @@ On signup, the Lendsqr Adjutor Karma blacklist is used to detect past loan defau
 > - `destination_wallet_id` is `NULL` for withdrawal operations (money going out)
 > - One `user` can have many `refresh_tokens` (one per active session)
 > - `idempotency_keys` are scoped per user and expire after 24 hours
+> - Each `transaction` has two corresponding `ledger_entries` (one debit, one credit) — `ledger_entries.transaction_id` references `transactions.id` with `RESTRICT` on delete to enforce immutability
 
 ---
 
@@ -82,6 +83,9 @@ The Adjutor API returns `404` when a BVN is not on the blacklist (not found = no
 
 ### Minimum balance enforcement
 Every wallet has a `minimum_balance` of NGN 100 that cannot be spent. Withdrawals and transfers are rejected if the transaction would leave the sender's balance below this floor.
+
+### Double entry ledger
+Every financial operation writes two immutable `ledger_entries` records atomically within the same database transaction that mutates balances — one debit and one corresponding credit. For funding, the user wallet is credited and the system float account is debited. For transfers, the sender wallet is debited and the receiver wallet is credited. For withdrawals, the user wallet is debited and the system float is credited. This means the sum of all debits always equals the sum of all credits across the ledger — the books are always balanced. Ledger entries are never updated or deleted, providing a complete and tamper-evident audit trail of all money movement in the system.
 
 ### Why Express over NestJS
 Express was chosen for its minimal abstraction layer and full control over middleware, routing, and transaction boundaries. For a relatively small, single-service application, this keeps the architecture explicit and avoids unnecessary framework overhead.
@@ -237,7 +241,7 @@ wallet-service-lendsqr/
 │   │   ├── idempotency.ts      # Idempotency key enforcement
 │   │   ├── rateLimiter.ts      # IP-based rate limiter for auth routes
 │   │   └── validate.ts         # Zod schema validation middleware
-│   ├── migrations/             # Knex schema migrations
+│   ├── migrations/             # Knex schema migrations (users, wallets, transactions, refresh_tokens, idempotency_keys, ledger_entries)
 │   ├── routes/                 # Express routers
 │   ├── services/               # Business logic
 │   │   ├── adjutor.service.ts  # Lendsqr Karma blacklist check
