@@ -79,6 +79,16 @@ export interface Transaction {
   created_at?: Date;
 }
 
+export interface LedgerEntry {
+  id?: number;
+  transaction_id: number;
+  wallet_id?: number | null;
+  entry_type: "debit" | "credit";
+  amount: number;
+  description?: string | null;
+  created_at?: Date;
+}
+
 export interface AuthPayload {
   id: number;
   email: string;

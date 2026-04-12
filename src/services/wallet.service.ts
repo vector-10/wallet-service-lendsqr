@@ -3,6 +3,7 @@ import {
   Wallet,
   Transaction,
   FundWalletResult,
+  LedgerEntry,
   TransferResult,
   WithdrawResult,
 } from "../types";
@@ -37,8 +38,27 @@ class WalletService {
     },
   ) {
     const reference = generateReference();
-    await trx("transactions").insert({ reference, ...data, status: "success" });
-    return reference;
+    const [transactionId] = await trx("transactions").insert({
+      reference,
+      ...data,
+      status: "success",
+    });
+    return { reference, transactionId };
+  }
+
+  private async recordLedgerEntries(
+    trx: Knex.Transaction,
+    transactionId: number,
+    entries: {
+      wallet_id: number | null | undefined;
+      entry_type: "debit" | "credit";
+      amount: number;
+      description?: string | null;
+    }[],
+  ) {
+    await trx<LedgerEntry>("ledger_entries").insert(
+      entries.map((entry) => ({ transaction_id: transactionId, ...entry })),
+    );
   }
 
   async fundWallet(userId: number, amount: number): Promise<FundWalletResult> {
@@ -50,13 +70,28 @@ class WalletService {
         .where({ id: wallet.id })
         .increment("balance", amount);
 
-      const reference = await this.recordTransaction(trx, {
+      const { reference, transactionId } = await this.recordTransaction(trx, {
         source_wallet_id: null,
         destination_wallet_id: wallet.id,
         type: "fund",
         amount,
         narration: `Wallet Funded with NGN ${amount}`,
       });
+
+      await this.recordLedgerEntries(trx, transactionId, [
+        {
+          wallet_id: wallet.id,
+          entry_type: "credit",
+          amount,
+          description: `Wallet funded with NGN ${amount}`,
+        },
+        {
+          wallet_id: null,
+          entry_type: "debit",
+          amount,
+          description: "System float debit",
+        },
+      ]);
 
       const updatedWallet = await trx("wallets")
         .where({ id: wallet.id })
@@ -80,9 +115,10 @@ class WalletService {
       throw new UnprocessableError("Cannot transfer to yourself");
 
     return db.transaction(async (trx) => {
-      const [firstUserId, secondUserId] = [senderId, receiverWallet.user_id].sort(
-        (a, b) => a - b,
-      );
+      const [firstUserId, secondUserId] = [
+        senderId,
+        receiverWallet.user_id,
+      ].sort((a, b) => a - b);
 
       const firstWallet = await trx("wallets")
         .where({ user_id: firstUserId })
@@ -99,7 +135,8 @@ class WalletService {
         firstUserId === senderId ? secondWallet : firstWallet;
 
       if (!senderWallet) throw new NotFoundError("Sender wallet not found");
-      if (!lockedReceiverWallet) throw new NotFoundError("Receiver wallet not found");
+      if (!lockedReceiverWallet)
+        throw new NotFoundError("Receiver wallet not found");
       const senderMinimum = senderWallet.minimum_balance ?? 100;
       if (senderWallet.balance - amount < senderMinimum) {
         throw new UnprocessableError(
@@ -114,7 +151,7 @@ class WalletService {
         .where({ id: lockedReceiverWallet.id })
         .increment("balance", amount);
 
-      const reference = await this.recordTransaction(trx, {
+      const { reference, transactionId } = await this.recordTransaction(trx, {
         source_wallet_id: senderWallet.id,
         destination_wallet_id: lockedReceiverWallet.id,
         type: "transfer",
@@ -122,7 +159,26 @@ class WalletService {
         narration: `Transfer of NGN ${amount} to ${receiverAccountNumber}`,
       });
 
-      return { reference, amount, receiver_account_number: receiverAccountNumber };
+      await this.recordLedgerEntries(trx, transactionId, [
+        {
+          wallet_id: senderWallet.id,
+          entry_type: "debit",
+          amount,
+          description: `Transfer to ${receiverAccountNumber}`,
+        },
+        {
+          wallet_id: lockedReceiverWallet.id,
+          entry_type: "credit",
+          amount,
+          description: `Transfer from account ${senderWallet.id}`,
+        },
+      ]);
+
+      return {
+        reference,
+        amount,
+        receiver_account_number: receiverAccountNumber,
+      };
     });
   }
 
@@ -147,13 +203,28 @@ class WalletService {
         .where({ id: wallet.id })
         .decrement("balance", amount);
 
-      const reference = await this.recordTransaction(trx, {
+      const { reference, transactionId } = await this.recordTransaction(trx, {
         source_wallet_id: wallet.id,
         destination_wallet_id: null,
         type: "withdraw",
         amount,
         narration: `Withdrawal of NGN ${amount}`,
       });
+
+      await this.recordLedgerEntries(trx, transactionId, [
+        {
+          wallet_id: wallet.id,
+          entry_type: "debit",
+          amount,
+          description: `Withdrawal of NGN ${amount}`,
+        },
+        {
+          wallet_id: null,
+          entry_type: "credit",
+          amount,
+          description: "System float credit",
+        },
+      ]);
 
       const updatedWallet = await trx("wallets")
         .where({ id: wallet.id })
