@@ -1,4 +1,4 @@
-# Demo Credit — Wallet Service
+# Pera — Wallet Service
 
 A backend wallet service built to enable lending functionality. Users can create accounts (with a wallet provisioned automatically), fund their wallets, transfer funds to other users, withdraw funds, and view their transaction history.
 On signup, the Lendsqr Adjutor Karma blacklist is used to detect past loan defaulters and refuse them getting onboarded.
